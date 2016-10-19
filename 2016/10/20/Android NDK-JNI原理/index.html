@@ -1,0 +1,266 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description"><title>Android NDK/JNI原理 | 卫城</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">Android NDK/JNI原理</h1><a id="logo" href="/.">卫城</a><p class="description">生活充满各种意外，不负期待。</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/guestbook/"><i class="fa fa-comments"> 留言</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">Android NDK/JNI原理</h1><div class="post-meta">Oct 20, 2016<span> | </span><span class="category"><a href="/categories/Android-Java/">Android Java</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><a data-thread-key="2016/10/20/Android NDK-JNI原理/" href="/2016/10/20/Android NDK-JNI原理/#comments" class="ds-thread-count"></a><div class="post-content"><h2 id="JNI是什么？"><a href="#JNI是什么？" class="headerlink" title="JNI是什么？"></a>JNI是什么？</h2><p>&emsp;&emsp;JNI，即Java native interface，Java的native层接口，它使得我们能够通过Java虚拟机中去调用C/C++。</p>
+<h2 id="NDK是什么？"><a href="#NDK是什么？" class="headerlink" title="NDK是什么？"></a>NDK是什么？</h2><p>&emsp;&emsp;NDK，即Native Development Kit。由谷歌官方推出的工具集合，用于开发者快速完成C/C++编译生成.so动态库，并自动打包生成Apk。</p>
+<h2 id="为什么要使用NDK？"><a href="#为什么要使用NDK？" class="headerlink" title="为什么要使用NDK？"></a>为什么要使用NDK？</h2><p>1、效率原因</p>
+<p>&emsp;&emsp;关于这一点，是因为JAVA编译生成.class文件再经过JVM进行解释，而C++不需要经过虚拟机，直接编译能够在计算机上解释执行。故而在一些比较复杂的图像处理及算法操作时，一般是通过Android NDK利用C++进行操作的。</p>
+<p>2、安全性原因</p>
+<p>&emsp;&emsp;C++的代码安全性更高，不容易通过反编译被破解。</p>
+<p>3、可移植性</p>
+<p>&emsp;&emsp;现有的许多优秀的开源库都是C/C++写的，为了能够直接使用故而通过NDK调用。同样的道理，这些代码也能够较方便的移植在其他平台上。</p>
+<h2 id="关于JNIEnv"><a href="#关于JNIEnv" class="headerlink" title="关于JNIEnv"></a>关于JNIEnv</h2><p>&emsp;&emsp;JNI/NDK接触多了便会常常看到类似下面方法的参数</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">public static native int getHelloString();</span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;它对应着Native层的：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">JNIEXPORT jint JNICALL</span><br><span class="line">Java_yellow5a5_demo_ndktest_NdkActivity_getHelloString(JNIEnv *env, jclass type) &#123;</span><br><span class="line"></span><br><span class="line">    //...</span><br><span class="line">    </span><br><span class="line">    return 1234;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;可是，为什么在Java层输入参数是空的，对应到Native层多了两个参数？首先介绍第二个参数type，事实上它表示的是Java层中getHelloString所在的那个类。因为这儿定义的是静态方法，它属于类的方法，所以对应的是类。如果去掉static修饰，那么它对应的就是对象的方法，那么这儿第二个参数就应该是jobject。</p>
+<p>&emsp;&emsp;对于第一个参数，JNIEnv，我们在native层对Java层的对象进行调用操作的时候，都会用到它。对于C而言，它是一个指向与线程相关的结构体的指针。对于C++而言，它本身是结构体，它的结构体内部包含与线程相关的结构体的指针。貌似有点绕口，这样设计是由于C语言不支持对象的概念，所以C语法中需要把env作为第一个参数传入。</p>
+<p>&emsp;&emsp;其中最重要的就是这个结构体 JNINativeInterface ，它包含了与JVM进行交互的各种方法，通过它我们得以在Native层去访问Java层的对象。可以通过这张图理解一下：</p>
+<p><img src="http://img.blog.csdn.net/20160122114057658" alt="这里写图片描述"></p>
+<h2 id="关于数据类型与签名"><a href="#关于数据类型与签名" class="headerlink" title="关于数据类型与签名"></a>关于数据类型与签名</h2><h3 id="基本类型对象"><a href="#基本类型对象" class="headerlink" title="- 基本类型对象"></a>- 基本类型对象</h3><p>&emsp;&emsp;以下是Java层和Native层的基本类型映射关系：</p>
+<table>
+<thead>
+<tr>
+<th>Java语言的类型</th>
+<th>JNI类型</th>
+<th>描述</th>
+<th>类型签名</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>boolean</td>
+<td>jboolean</td>
+<td>unsigned 8 bits</td>
+<td>Z</td>
+</tr>
+<tr>
+<td>byte</td>
+<td>jbyte</td>
+<td>signed 8 bits</td>
+<td>B</td>
+</tr>
+<tr>
+<td>char</td>
+<td>jchar</td>
+<td>unsigned 16 bits</td>
+<td>C</td>
+</tr>
+<tr>
+<td>short</td>
+<td>jshort</td>
+<td>signed 16 bits</td>
+<td>S</td>
+</tr>
+<tr>
+<td>int</td>
+<td>jint</td>
+<td>signed 32 bits</td>
+<td>I</td>
+</tr>
+<tr>
+<td>long</td>
+<td>jlong</td>
+<td>signed 64 bits</td>
+<td>J</td>
+</tr>
+<tr>
+<td>float</td>
+<td>jfloat</td>
+<td>32 bits</td>
+<td>F</td>
+</tr>
+<tr>
+<td>double</td>
+<td>jdouble</td>
+<td>64 bits</td>
+<td>D</td>
+</tr>
+<tr>
+<td>void</td>
+<td></td>
+<td></td>
+<td>V</td>
+</tr>
+</tbody>
+</table>
+<h3 id="引用类型对象"><a href="#引用类型对象" class="headerlink" title="- 引用类型对象"></a>- 引用类型对象</h3><p>&emsp;&emsp;以下是Java引用数据类型的映射表：</p>
+<table>
+<thead>
+<tr>
+<th>Java引用类型</th>
+<th>Native类型</th>
+<th>Java引用类型</th>
+<th>Native类型</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>All objects</td>
+<td>jobject</td>
+<td>char[]</td>
+<td>jcharArray</td>
+</tr>
+<tr>
+<td>java.lang.Class实例</td>
+<td>jclass</td>
+<td>short[]</td>
+<td>jshortArray</td>
+</tr>
+<tr>
+<td>java.lang.String实例</td>
+<td>jstring</td>
+<td>int[]</td>
+<td>jintArray</td>
+</tr>
+<tr>
+<td>Object[]</td>
+<td>jobjectArray</td>
+<td>long[]</td>
+<td>jlongArray</td>
+</tr>
+<tr>
+<td>boolean[]</td>
+<td>jbooleanArray</td>
+<td>float[]</td>
+<td>floatArray</td>
+</tr>
+<tr>
+<td>byte[]</td>
+<td>jbyteArray</td>
+<td>double[]</td>
+<td>jdoubleArray</td>
+</tr>
+<tr>
+<td>java.lang.Throwable实例</td>
+<td>jthrowable</td>
+<td>－</td>
+<td>－</td>
+</tr>
+</tbody>
+</table>
+<p>&emsp;&emsp;引用对象主要有类、对象和数组，需要注意的是内存的释放。</p>
+<p>&emsp;&emsp;类似下面Java层的int对应到Native的参数就是jint。<br>Java层：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">public native int changeInt(int i);</span><br></pre></td></tr></table></figure>
+<p>Native层：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">JNIEXPORT jint JNICALL</span><br><span class="line">Java_yellow5a5_demo_alldemo_NDKActivity_changeInt(JNIEnv *env, jobject instance, jint i) &#123;</span><br><span class="line">    jint result = i * 5;</span><br><span class="line">    return result;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="类型签名"><a href="#类型签名" class="headerlink" title="类型签名"></a>类型签名</h3><p>&emsp;&emsp;JNI中通过类型签名来标识Java中的类型，其中包括类、方法、或者数据类型。<br>&emsp;&emsp;基础类型的签名可以查看基础类型对象映射表，也就是我放的那个表。大部分是直接取类型的第一个字母的大写。比如boolean对应的是B，char对应的C，short对应的是S。但不全是，比如，需要注意一下byte对应的是J，因为B被byte对应了；long对应的是J，因为L在类签名中有用到。<br>&emsp;&emsp;类的数字签名为<font color="#ff5777">L+包名+类名+;</font>，比如一会我会用Java中CharSequence，它对应的是<font color="#ff5777">Ljava/lang/CharSequence;</font>，这儿请务必不要忘了后面的分号，凡是通过包名类名路径找到引用的都是要加上分号的。<br>&emsp;&emsp;对象的签名就是它对应的类的签名。<br>&emsp;&emsp;数组的签名则是在它对应的类型的左边加上“［“符号，比如int[]对应的就是[I，long[]对应的就是[J，几维数组就加几个“[“。<br>&emsp;&emsp;方法的签名为<font color="#ff5777">(参数类型签名)＋返回值类型签名</font>，比如TextView的setText方法</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">public final void setText(CharSequence text)</span><br></pre></td></tr></table></figure>
+<p>对应的签名是<font color="#ff5777">(Ljava/lang/CharSequence;)V</font>。如果有多个参数也是一样的，在括号内写多几个签名罢了。比如：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">public int fun(int i, CharSequence text,int[] array)</span><br></pre></td></tr></table></figure>
+<p>它对应的签名则是<font color="#ff5777">(ILjava/lang/CharSequence;I)I</font>。</p>
+<h2 id="入门配置简介"><a href="#入门配置简介" class="headerlink" title="入门配置简介"></a>入门配置简介</h2><ul>
+<li>1、下载NDK，配置NDK环境，在Project Structure选择路径。</li>
+<li>2、检查一下local.properties是否有配置路径<br>在最下面添加一行NDK的路径，比如我的：</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ndk.dir=/Users/Weiwu/Library/Android/sdk/ndk-bundle</span><br></pre></td></tr></table></figure>
+<ul>
+<li>3、设置gradle.properties<br>在gradle.properties最后加入android.useDeprecatedNdk=true</li>
+<li>4、创建JNI文件夹</li>
+<li>5、配置gradle中ndk的设置<br>类似这样</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">//NDK相关配置</span><br><span class="line">ndk &#123;</span><br><span class="line">    moduleName = &quot;JniDemo&quot;//配置NDK项目</span><br><span class="line">    abiFilters &quot;armeabi&quot;, &quot;armeabi-v7a&quot;, &quot;x86&quot;</span><br><span class="line">    ldLibs = [&quot;android&quot;, &quot;jnigraphics&quot;, &quot;log&quot;]//引包</span><br><span class="line">    stl &quot;stlport_static&quot;</span><br><span class="line">    cFlags &quot;-std=c99 -O3&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>6、在Java层引库，并声明对应的Native方法</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">static &#123;</span><br><span class="line">    System.loadLibrary(&quot;JniDemo&quot;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">public static native int getHelloString();</span><br></pre></td></tr></table></figure>
+<ul>
+<li>7、在JNI目录下编写 c/c++ 代码<ul>
+<li>方法是以java_pacakege_class_method 形式来命名。pacakege对应的是包名，class对应的是该Native方法所在的类的类名。</li>
+</ul>
+</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">JNIEXPORT jint JNICALL</span><br><span class="line">Java_yellow5a5_demo_ndktest_NdkActivity_getHelloString(JNIEnv *env, jclass type) &#123;</span><br><span class="line"></span><br><span class="line">    jint idata = 5;//并没有什么意义</span><br><span class="line"></span><br><span class="line">    return idata;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li><p>8、在Java层调用Native方法</p>
+</li>
+<li><p>9、native代码仿真配置</p>
+</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">buildTypes &#123;</span><br><span class="line">    release &#123;</span><br><span class="line">        minifyEnabled false</span><br><span class="line">        proguardFiles getDefaultProguardFile(&apos;proguard-android.txt&apos;), &apos;proguard-rules.pro&apos;</span><br><span class="line">        ndk &#123;//加入后就才能正常的native debug</span><br><span class="line">            debuggable = true</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    debug &#123;//加入后就才能正常的native debug,否则会报build type isn&apos;t JNI debuggable的问题</span><br><span class="line">        debuggable = true</span><br><span class="line">        jniDebuggable = true</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>到此，环境、及过程我们都已经清楚了。那么我们开始了解对象传递方法。</p>
+<h2 id="对象传递的介绍"><a href="#对象传递的介绍" class="headerlink" title="对象传递的介绍"></a>对象传递的介绍</h2><ul>
+<li>Java层的对象如何传递到C++层呢？</li>
+<li>Native层如何操作Java层的对象？</li>
+<li>如何直接从Native创建Java层的对象？<br>关于这些问题，我们需要先从JNI的方法开始讲起。<ul>
+<li>获取类的类对象引用的findClass</li>
+<li>获取字段标识与现场GetFieldID</li>
+<li>获取字段中的内容和一些适当的，如 GetIntField</li>
+</ul>
+</li>
+</ul>
+<p>&emsp;&emsp;当我们需要调用某个类对象的方法是，我们首先要通过FindClass获取这个类（jclass），在通过GetMethodID获得方法的ID（jmethodID），最后通过CallVoidMethod取调用这个方法。当然如果返回值是其他的话就是其他的CallXXXXMethod之类的方法，在此仅是介绍过程，具体方法大家可以自行查阅。以下仅举例子：<br>&emsp;&emsp;</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">public native static void changeTextView(TextView textView,String text);</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">JNIEXPORT void JNICALL</span><br><span class="line">Java_yellow5a5_demo_alldemo_NDKActivity_changeTextView(JNIEnv *env, jclass type, jobject textView, jstring hello) &#123;</span><br><span class="line"></span><br><span class="line">    jclass TextView = env-&gt;FindClass(&quot;android/widget/TextView&quot;);//获取class</span><br><span class="line">    if(TextView == NULL)&#123;</span><br><span class="line">        LOGE(&quot;FindClass Error.&quot;);</span><br><span class="line">        return;</span><br><span class="line">    &#125;</span><br><span class="line">    jmethodID setText = env-&gt;GetMethodID(TextView, &quot;setText&quot;, &quot;(Ljava/lang/CharSequence;)V&quot;);</span><br><span class="line">    if(setText == NULL)&#123;</span><br><span class="line">        LOGE(&quot;GetMethodID Error&quot;);</span><br><span class="line">        return;</span><br><span class="line">    &#125;</span><br><span class="line">    hello = env-&gt;NewStringUTF(&quot;有木有？?&quot;);</span><br><span class="line">    env-&gt;CallVoidMethod(textView, setText, hello);</span><br><span class="line">    env-&gt;DeleteLocalRef (hello);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;如果想要在Native层创建Java层的对象，则多执行一步执行构造方法即可。<br>&emsp;&emsp;另外需要注意的是FindClass不能子线程中使用，建议的处理方式是设置全局变量，在OnLoad方法中对其进行初始化（调用FindClass），然后直接在子线程中使用。</p>
+<h3 id="Bitmap操作"><a href="#Bitmap操作" class="headerlink" title="Bitmap操作"></a>Bitmap操作</h3><p>另外关于Bitmap的操作。<br>首先看一下与之相关的结构体：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">typedef struct &#123;</span><br><span class="line">    uint32_t    width;</span><br><span class="line">    uint32_t    height;</span><br><span class="line">    uint32_t    stride;</span><br><span class="line">    int32_t     format;</span><br><span class="line">    uint32_t    flags;      // 0 for now</span><br><span class="line">&#125; AndroidBitmapInfo;</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">enum AndroidBitmapFormat &#123;</span><br><span class="line">    ANDROID_BITMAP_FORMAT_NONE      = 0,</span><br><span class="line">    ANDROID_BITMAP_FORMAT_RGBA_8888 = 1,</span><br><span class="line">    ANDROID_BITMAP_FORMAT_RGB_565   = 4,</span><br><span class="line">    ANDROID_BITMAP_FORMAT_RGBA_4444 = 7,</span><br><span class="line">    ANDROID_BITMAP_FORMAT_A_8       = 8,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;主要可以得到Bitmap对象的宽、高、一行的字节大小、编码类型等。接着直接看看下面例子：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">JNIEXPORT void JNICALL</span><br><span class="line">Java_yellow5a5_demo_alldemo_NDKActivity_changeBitmap(JNIEnv *env, jobject instance, jobject bm) &#123;</span><br><span class="line"></span><br><span class="line">    AndroidBitmapInfo info = &#123;0&#125;;</span><br><span class="line">    if (AndroidBitmap_getInfo(env, bm, &amp;info) &lt; 0) &#123; return; &#125;</span><br><span class="line"></span><br><span class="line">    unsigned char *bmData = NULL;</span><br><span class="line">    if (AndroidBitmap_lockPixels(env, bm, (void **) &amp;bmData) &lt; 0) &#123; return; &#125;</span><br><span class="line"></span><br><span class="line">    //````操作bmData，bmData就是指向Bitmap像素数据的指针。</span><br><span class="line"></span><br><span class="line">    AndroidBitmap_unlockPixels(env, bm);</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;AndroidBitmap_getInfo与AndroidBitmap_lockPixels返回参数的意义：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">#define ANDROID_BITMAP_RESULT_SUCCESS            0</span><br><span class="line">#define ANDROID_BITMAP_RESULT_BAD_PARAMETER     -1</span><br><span class="line">#define ANDROID_BITMAP_RESULT_JNI_EXCEPTION     -2</span><br><span class="line">#define ANDROID_BITMAP_RESULT_ALLOCATION_FAILED -3</span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;通过AndroidBitmap_lockPixels来得到Bitmap的像素数据，处理后最后调用AndroidBitmap_unlockPixels解锁像素，将操作后的数据改变到Bitmap上。</p>
+<h2 id="字符串编码的不同"><a href="#字符串编码的不同" class="headerlink" title="字符串编码的不同"></a>字符串编码的不同</h2><p>&emsp;&emsp;在Java中使用的Unicode（UTF-16）的字符串编码格式，而在C++中使用的时UTF-8，所以我们一般都需要用GetStringUTFChars和NewStringUTF来获取、处理字符串信息。好处在于我们仍然可以使用C++标志库中字符串计算相关的操作。</p>
+<h2 id="Native层的三种引用"><a href="#Native层的三种引用" class="headerlink" title="Native层的三种引用"></a>Native层的三种引用</h2><h3 id="局部引用"><a href="#局部引用" class="headerlink" title="局部引用"></a>局部引用</h3><p>&emsp;&emsp;通过调过各种JNI中的方法(FindClass、NewObject…)创建局部引用，局部引用不能跨函数使用，在函数返回时局部引用的对象就会被JVM释放掉，或也可以调用DeleteLocalRef进行释放。需要注意的，当我们想利用静态变量来缓存引用的时候，对于局部引用，下次进入函数时常常可能已经被回收了，而此时静态变量所指向的将是一个野指针，导致报错。因而不要使用静态变量来缓存它。<br>&emsp;&emsp;有些人问，既然JVM本身会释放，我们为什么还需要通过DeleteLocalRef手动释放内存呢？因为在Android中，JVM中的局部引用表最大限制只有512个，当超出这个限制时就会抛出这样的一个错误。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">JNI ERROR (app bug): local reference table overflow (max=512)</span><br></pre></td></tr></table></figure>
+<p>当我们需要在函数方法中创建很多的局部引用时，为了避免引用数量超出限制，就需要手动对引用进行回收。</p>
+<h3 id="全局引用"><a href="#全局引用" class="headerlink" title="全局引用"></a>全局引用</h3><p>&emsp;&emsp;通过调用NewGlobalRef创建全局引用，全局引用可以跨方法、跨进程调用，并且不会被GC回收。直到主动调用DeleteGlobalRef时才会对其内存进行释放。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">jclass localClass = env-&gt;FindClass(&quot;MyClass&quot;);</span><br><span class="line">jclass globalClass = reinterpret_cast&lt;jclass&gt;(env-&gt;NewGlobalRef(localClass));</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">(*env)-&gt;DeleteGlobalRef(env,globalClass);</span><br></pre></td></tr></table></figure>
+<h3 id="弱全局引用"><a href="#弱全局引用" class="headerlink" title="弱全局引用"></a>弱全局引用</h3><p>&emsp;&emsp;弱全局引用是一种特殊的全局引用，与普通的全局引用，弱全局引用允许GC回收它指向的内存块。程序员可以通过IsSameObject检测是否与某变量指向同一个内存，通过与NULL对比判定是否为空。</p>
+<h2 id="关于JAVA和Cpp的线程"><a href="#关于JAVA和Cpp的线程" class="headerlink" title="关于JAVA和Cpp的线程"></a>关于JAVA和Cpp的线程</h2><p>&emsp;&emsp;每个线程中有切只有一个对应的JNIEnv。一般我们线程都开启在Java层，那么直接在对应的函数参数中就有这个JNIEnv。但是当我们在底层去创建这个线程时，那么就需要通过AttachCurrentThread去连接JNI上对应的JNIEnv指针。调用AttachCurrentThread后，JAVA层上将会对应的添加一个Thread对象到主线程组中。</p>
+<p>&emsp;&emsp;JVM结构体：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">struct _JavaVM &#123;</span><br><span class="line">    const struct JNIInvokeInterface* functions;</span><br><span class="line"></span><br><span class="line">#if defined(__cplusplus)</span><br><span class="line">    jint DestroyJavaVM()</span><br><span class="line">    &#123; return functions-&gt;DestroyJavaVM(this); &#125;</span><br><span class="line">    jint AttachCurrentThread(JNIEnv** p_env, void* thr_args)</span><br><span class="line">    &#123; return functions-&gt;AttachCurrentThread(this, p_env, thr_args); &#125;</span><br><span class="line">    jint DetachCurrentThread()</span><br><span class="line">    &#123; return functions-&gt;DetachCurrentThread(this); &#125;</span><br><span class="line">    jint GetEnv(void** env, jint version)</span><br><span class="line">    &#123; return functions-&gt;GetEnv(this, env, version); &#125;</span><br><span class="line">    jint AttachCurrentThreadAsDaemon(JNIEnv** p_env, void* thr_args)</span><br><span class="line">    &#123; return functions-&gt;AttachCurrentThreadAsDaemon(this, p_env, thr_args); &#125;</span><br><span class="line">#endif /*__cplusplus*/</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;JNIInvokeInterface中的AttachCurrentThread：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">struct JNIInvokeInterface &#123;</span><br><span class="line">    void*       reserved0;</span><br><span class="line">    void*       reserved1;</span><br><span class="line">    void*       reserved2;</span><br><span class="line"></span><br><span class="line">    jint        (*DestroyJavaVM)(JavaVM*);</span><br><span class="line">    jint        (*AttachCurrentThread)(JavaVM*, JNIEnv**, void*);</span><br><span class="line">    jint        (*DetachCurrentThread)(JavaVM*);</span><br><span class="line">    jint        (*GetEnv)(JavaVM*, void**, jint);</span><br><span class="line">    jint        (*AttachCurrentThreadAsDaemon)(JavaVM*, JNIEnv**, void*);</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;首先我们看看AttachCurrentThread的输入参数，第一个是JVM，第二个是需要被绑定的JNIEnv，第三个可以为空或指向JavaVMAttachArgs结构指定的附加信息，它内部包含线程在加入到虚拟机时的JNI的版本号、线程名称、所属线程组，一般设置为NULL，那么就是默认的版本，线程组则加入到主线程组中。</p>
+<p>&emsp;&emsp;AttachCurrentThread的代码在dalvik/vm/Jni.c才看的到，它内部调用了一个attachThread的方法：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br></pre></td><td class="code"><pre><span class="line">static jint attachThread(JavaVM* vm, JNIEnv** p_env, void* thr_args,</span><br><span class="line">    bool isDaemon)</span><br><span class="line">&#123;</span><br><span class="line">    JavaVMAttachArgs* args = (JavaVMAttachArgs*) thr_args;</span><br><span class="line">    Thread* self;</span><br><span class="line">    bool result = false;</span><br><span class="line"></span><br><span class="line">    /*</span><br><span class="line">     * Return immediately if we&apos;re already one with the VM.</span><br><span class="line">     */</span><br><span class="line">    self = dvmThreadSelf();</span><br><span class="line">    if (self != NULL) &#123;</span><br><span class="line">        *p_env = self-&gt;jniEnv;</span><br><span class="line">        return JNI_OK;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    /*</span><br><span class="line">     * No threads allowed in zygote mode.</span><br><span class="line">     */</span><br><span class="line">    if (gDvm.zygote) &#123;</span><br><span class="line">        return JNI_ERR;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    /* tweak the JavaVMAttachArgs as needed */</span><br><span class="line">    JavaVMAttachArgs argsCopy;</span><br><span class="line">    if (args == NULL) &#123;</span><br><span class="line">        /* allow the v1.1 calling convention */</span><br><span class="line">        argsCopy.version = JNI_VERSION_1_2;</span><br><span class="line">        argsCopy.name = NULL;</span><br><span class="line">        argsCopy.group = dvmGetMainThreadGroup();</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        assert(args-&gt;version &gt;= JNI_VERSION_1_2);</span><br><span class="line"></span><br><span class="line">        argsCopy.version = args-&gt;version;</span><br><span class="line">        argsCopy.name = args-&gt;name;</span><br><span class="line">        if (args-&gt;group != NULL)</span><br><span class="line">            argsCopy.group = args-&gt;group;</span><br><span class="line">        else</span><br><span class="line">            argsCopy.group = dvmGetMainThreadGroup();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    result = dvmAttachCurrentThread(&amp;argsCopy, isDaemon);</span><br><span class="line">    ......</span><br><span class="line"></span><br><span class="line">    if (result) &#123;</span><br><span class="line">        self = dvmThreadSelf();</span><br><span class="line">        assert(self != NULL);</span><br><span class="line">        dvmChangeStatus(self, THREAD_NATIVE);</span><br><span class="line">        *p_env = self-&gt;jniEnv;</span><br><span class="line">        return JNI_OK;</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        return JNI_ERR;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;attachThread内部通过dvmThreadSelf来判断线程是否已经有对应的Java线程创建了，有的话就直接返回，不作操作了。没有的话再判断对线程线程信息的结构指针（JavaVMAttachArgs）进行操作，最后通过dvmAttachCurrentThread方法为当前线程创建JNI的上下文信息（创建Thread对象，初始化引用表等等。。）</p>
+<p>&emsp;&emsp;遵循谁创建谁销毁的原则，我们在不需要用到该线程的时候必须通过DetachCurrentThread对它进行注销，原理与注册时对应的，将创建的对象、引用表、占用内存进行清理等。</p>
+<h2 id="JNI-OnLoad"><a href="#JNI-OnLoad" class="headerlink" title="JNI_OnLoad"></a>JNI_OnLoad</h2><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span><br><span class="line"> * Prototypes for functions exported by loadable shared libs.  These are</span><br><span class="line"> * called by JNI, not provided by JNI.</span><br><span class="line"> */</span></span><br><span class="line"><span class="function">JNIEXPORT jint JNICALL <span class="title">JNI_OnLoad</span><span class="params">(JavaVM* vm, <span class="keyword">void</span>* reserved)</span></span>;</span><br><span class="line"><span class="function">JNIEXPORT <span class="keyword">void</span> JNICALL <span class="title">JNI_OnUnload</span><span class="params">(JavaVM* vm, <span class="keyword">void</span>* reserved)</span></span>;</span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;在我们调用System.loadLibrary时，会跟着调用到JNI_OnLoad的方法，我们可以里面进行一些初始化的操作，其中第一个输入参数就是JVM在JNI上的代表。同理，JNI_OnUnload则是在卸载该库的时候调用的。</p>
+<h2 id="异常处理"><a href="#异常处理" class="headerlink" title="异常处理"></a>异常处理</h2><p>&emsp;&emsp;异常出现后，Native相关代码必须先检查清除异常，然后才能进行其他的 JNI 函数调用。当有异常未被清除时，只有部分JNI异常处理函数可被安全地调用，可参考官方文档。<br>关于异常的一些方法：</p>
+<p>ExceptionCheck 检查异常</p>
+<p>ExceptionOccurred 获取异常</p>
+<p>ExceptionDescribe 异常堆栈信息</p>
+<p>Throw/ThrowNew 抛出异常</p>
+<p>ExceptionClear 清除异常</p>
+<p>&emsp;&emsp;目前Android还不支持C++的异常，JNI中的throw和throwNew方法都只是设置一个异常指针在当前的线程上，直到返回到了Java层的时候，才会得到显现，所以应在throw时进行return。</p>
+<h2 id="基本数组"><a href="#基本数组" class="headerlink" title="基本数组"></a>基本数组</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">	NativeType *Get&lt;PrimitiveType&gt;ArrayElements(JNIEnv *env,</span><br><span class="line">ArrayType array, jboolean *isCopy);</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">	void Release&lt;PrimitiveType&gt;ArrayElements(JNIEnv *env,</span><br><span class="line">ArrayType array, NativeType *elems, jint mode);</span><br></pre></td></tr></table></figure>
+<p>Release的第四个参数mode可以取下面的值：</p>
+<ul>
+<li><p>0：对Java的数组进行更新并释放C/C++的数组</p>
+</li>
+<li><p>JNI_COMMIT：对Java的数组进行更新但是不释放C/C++的数组</p>
+</li>
+<li><p>JNI_ABORT：对Java的数组不进行更新，释放C/C++的数组</p>
+</li>
+</ul>
+<h2 id="Crash错误捕捉"><a href="#Crash错误捕捉" class="headerlink" title="Crash错误捕捉"></a>Crash错误捕捉</h2><p>&emsp;&emsp;NDK自带的NDK-STACK工具可以查看崩溃信息。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">adb shell logcat | ndk-stack -sym $PROJECT_PATH/obj/local/armeabi</span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;根据手机CPU类型选择不同的CPU架构目录即可。</p>
+<h2 id="关于ndk-build及-mk文件"><a href="#关于ndk-build及-mk文件" class="headerlink" title="关于ndk-build及.mk文件"></a>关于ndk-build及.mk文件</h2><p>&emsp;&emsp;ndk-build事实上是一个shell脚本文件，它负责对mk指令进行封装，它本身并没有对参数进行处理，而是将参数传给了mk文件，为编译提供一个统一的入口，而真正开始参数处理是在于build/core/build-local.mk文件的执行。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$GNUMAKE -f $PROGDIR/build/core/build-local.mk &quot;$@&quot;</span><br></pre></td></tr></table></figure></p>
+<h3 id="编译优化的功能"><a href="#编译优化的功能" class="headerlink" title="编译优化的功能"></a>编译优化的功能</h3><p>&emsp;&emsp;与之相关的两个设置：</p>
+<ul>
+<li>LOCAL_CFLAGS</li>
+<li>LOCAL_CPPFLAGS</li>
+<li>APP_CFLAGS</li>
+<li>APP_CPPFLAGS<br>&emsp;&emsp;前面两个是设置在Android.mk中的，后面两个是设置在Application.mk中的，后者优先级大于前者。<br>&emsp;&emsp;CFLAGS针对C与C++文件，而CPPFLAGS在在android-ndk-1.5_r1版本前仅针对C++文件，现在也支持C了。一般我们可以在Android.mk文件的LOCAL_CFLAGS进行设置，如果是利用gradle配置的话，就在ndk中设置cFlags参数。<br>其中主要包括以下几个设置参数：<br>-o0、-o1、-o2、-o3、－oS</li>
+</ul>
+<p>.mk文件设置参考：<a href="http://developer.android.com/intl/zh-cn/ndk/guides/application_mk.html" target="_blank" rel="external">http://developer.android.com/intl/zh-cn/ndk/guides/application_mk.html</a></p>
+<h3 id="标准库的支持"><a href="#标准库的支持" class="headerlink" title="标准库的支持"></a>标准库的支持</h3><p>在Application.mk中设置：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">APP_STL := stlport_static</span><br><span class="line">APP_STL := gnustl_static</span><br></pre></td></tr></table></figure>
+<pre><code>stlport_static --&gt; 以静态链接的方式使用stlport版本的STL
+gnustl_static  --&gt; 以静态链接的方式使用gnu版本的STL
+</code></pre><h2 id="NDK版本的影响"><a href="#NDK版本的影响" class="headerlink" title="NDK版本的影响"></a>NDK版本的影响</h2><p>java.lang.UnsatisfiedLinkError: dlopen failed: cannot locate symbol “srand” referenced by “libcocos2dcpp.so”…<br>&emsp;&emsp;解决这个问题的办法之一就是把ndk版本从r10d降为r9d，不过这并不是推荐的方法，因为r9d对C++ 11的正则表达式支持不够，以及一些其它的原因。</p>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://huangweiwu.info/2016/10/20/Android NDK-JNI原理/" data-id="ciuh4zsnp0000fwfw05gx76t3" class="article-share-link">分享到</a><div class="tags"><a href="/tags/JNI/">JNI</a></div><div class="post-nav"><a href="/2016/05/06/hello-world/" class="next">Hello World</a></div><div data-thread-key="2016/10/20/Android NDK-JNI原理/" data-title="Android NDK/JNI原理" data-url="http://huangweiwu.info/2016/10/20/Android NDK-JNI原理/" class="ds-share flat"><div class="ds-share-inline"><ul class="ds-share-icons-16"><li data-toggle="ds-share-icons-more"><a href="javascript:void(0);" class="ds-more">分享到：</a></li><li><a href="javascript:void(0);" data-service="weibo" class="ds-weibo">微博</a></li><li><a href="javascript:void(0);" data-service="qzone" class="ds-qzone">QQ空间</a></li><li><a href="javascript:void(0);" data-service="qqt" class="ds-qqt">腾讯微博</a></li><li><a href="javascript:void(0);" data-service="wechat" class="ds-wechat">微信</a></li></ul><div class="ds-share-icons-more"></div></div></div><div data-thread-key="2016/10/20/Android NDK-JNI原理/" data-title="Android NDK/JNI原理" data-url="http://huangweiwu.info/2016/10/20/Android NDK-JNI原理/" data-author-key="1" class="ds-thread"></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://huangweiwu.info"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/Android-Java/">Android Java</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Hi-man/">Hi,man</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/留言板/" style="font-size: 15px;">留言板</a> <a href="/tags/JNI/" style="font-size: 15px;">JNI</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/10/20/Android NDK-JNI原理/">Android NDK/JNI原理</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/06/hello-world/">Hello World</a></li></ul></div><div class="widget"><div class="comments-title"><i class="fa fa-comment-o"> 最近评论</i></div><div data-num-items="5" data-show-avatars="0" data-show-time="1" data-show-admin="0" data-excerpt-length="32" data-show-title="1" class="ds-recent-comments"></div></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="" title="暂无" target="_blank">暂无</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">卫城.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script>var duoshuoQuery = {short_name:'huangweiwu'};
+(function() {
+    var ds = document.createElement('script');
+    ds.type = 'text/javascript';ds.async = true;
+    ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+    ds.charset = 'UTF-8';
+    (document.getElementsByTagName('head')[0]
+        || document.getElementsByTagName('body')[0]).appendChild(ds);
+})();
+</script><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
