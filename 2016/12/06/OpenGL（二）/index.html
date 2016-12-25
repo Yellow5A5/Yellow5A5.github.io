@@ -1,0 +1,177 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description"><title>OpenGL ES（二）着色语言 | 卫城</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/3.0.3/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">OpenGL ES（二）着色语言</h1><a id="logo" href="/.">卫城</a><p class="description">生活充满各种意外，不负期待。</p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/guestbook/"><i class="fa fa-comments"> 留言</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">OpenGL ES（二）着色语言</h1><div class="post-meta">Dec 6, 2016<span> | </span><span class="category"><a href="/categories/Android-Java-OpenGL/">Android Java OpenGL</a></span><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><a data-thread-key="2016/12/06/OpenGL（二）/" href="/2016/12/06/OpenGL（二）/#comments" class="ds-thread-count"></a><div class="post-content"><p>OpenGL ES的着色语言是基于C/C++语法的语言，虽然不同之处还是很多，取消了一些C中的类型及运算特性，以及多处了一部分矩阵运算、向量等等。</p>
+<h2 id="着色语言基础"><a href="#着色语言基础" class="headerlink" title="着色语言基础"></a>着色语言基础</h2><h3 id="数据类型"><a href="#数据类型" class="headerlink" title="数据类型"></a>数据类型</h3><h4 id="标量"><a href="#标量" class="headerlink" title="标量"></a>标量</h4><p>标量即没有方向、只有大小的量。比如有bool、int、float。整形的大小范围为－65535～65536，也可以像C语言一样用不同进制去表示，简单的这里就不详细说了。</p>
+<h4 id="向量"><a href="#向量" class="headerlink" title="向量"></a>向量</h4><p>向量即有方向、大小的量，比如速率是标量，速度是向量，路程是标量，位移是向量。着色器语言中的向量基本类型也是有bool、int、float三种组成，每个向量可以由2、3或4个标量构成。</p>
+<table>
+<thead>
+<tr>
+<th>向量类型</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>vec2</td>
+<td>2 个浮点数组成的向量</td>
+</tr>
+<tr>
+<td>vec3</td>
+<td>3 个浮点数组成的向量</td>
+</tr>
+<tr>
+<td>vec4</td>
+<td>4 个浮点数组成的向量</td>
+</tr>
+<tr>
+<td>bvec2</td>
+<td>2 个布尔值组成的向量</td>
+</tr>
+<tr>
+<td>bvec3</td>
+<td>3 个布尔值组成的向量</td>
+</tr>
+<tr>
+<td>bvec4</td>
+<td>4 个布尔值组成的向量</td>
+</tr>
+<tr>
+<td>ivec2</td>
+<td>2 个整数组成的向量</td>
+</tr>
+<tr>
+<td>ivec3</td>
+<td>3 个整数组成的向量</td>
+</tr>
+<tr>
+<td>ivec4</td>
+<td>4 个整数组成的向量</td>
+</tr>
+</tbody>
+</table>
+<p> 将一个向量看作颜色时，分别可以用r,g,b,a去表示其对应的量，类似：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">aColor.r = 0.2;</span><br><span class="line">aColor.g = 0.4;</span><br></pre></td></tr></table></figure>
+<p>看作位置量时，可以用x,y,z,w分别表示对应坐标，w表示向量的模(大小)。</p>
+<p>也可以将其当作数组进行取值，以下等同上方例子。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">aColor[0] = 0.2;</span><br><span class="line">aColor[1] = 0.4;</span><br></pre></td></tr></table></figure>
+<h4 id="矩阵"><a href="#矩阵" class="headerlink" title="矩阵"></a>矩阵</h4><table>
+<thead>
+<tr>
+<th>矩阵类型</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>mat2</td>
+<td>浮点数的 2X2 矩阵</td>
+</tr>
+<tr>
+<td>mat3</td>
+<td>浮点数的 3X3 矩阵</td>
+</tr>
+<tr>
+<td>mat4</td>
+<td>浮点数的 4X4 矩阵</td>
+</tr>
+</tbody>
+</table>
+<p>比如</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mat4 m4;//声明4X4的浮点矩阵</span><br></pre></td></tr></table></figure>
+<p>矩阵分别由列和排组成，m4可以视为由4个vec4组成的，一个vec4相当于1列，那么m4[0]就是第一列，m4[1]就是第二列…m4[0][0]就是第一列第一排的float值…依次类推。矩阵运算相关可以直接学习线性代数的知识，在此不展开。</p>
+<h4 id="采样器"><a href="#采样器" class="headerlink" title="采样器"></a>采样器</h4><table>
+<thead>
+<tr>
+<th>采样类型</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>sampler2D</td>
+<td>用来存取二维纹理的句柄</td>
+</tr>
+<tr>
+<td>sampler3D</td>
+<td>用来存取三维纹理的句柄</td>
+</tr>
+<tr>
+<td>samplerCube</td>
+<td>用来存取立方映射纹理的句柄</td>
+</tr>
+</tbody>
+</table>
+<p>采样器类型是不同于C语言中的特殊类型，它代表的一副对应纹理贴图。采样器变量不能在着色器中初始化。一般情况下，采样器变量都用uniform修饰，从Java语言接收赋值。</p>
+<h4 id="结构体"><a href="#结构体" class="headerlink" title="结构体"></a>结构体</h4><p>此类型同C语言，大部分人都接触过，就不介绍了。</p>
+<h3 id="类型声明使用及运算符"><a href="#类型声明使用及运算符" class="headerlink" title="类型声明使用及运算符"></a>类型声明使用及运算符</h3><p>基本与C语言一致，矩阵定义时有一些不同的技巧。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">float a = 1.2;</span><br><span class="line">float b = 2.2;</span><br><span class="line">vec3 va = vec3(a,b,3.2);</span><br><span class="line">vec4 vb = vec4(va.x,va.y,va.z,10.1);</span><br><span class="line">mat3 ma = mat3(va, va, va);</span><br><span class="line">mat4 mb = mat4(vb, vb, vb);</span><br><span class="line"></span><br><span class="line">//混合赋值</span><br><span class="line">vec3 vc = vb.xxy;//相当于(vb.x, vb.x, vb.y)</span><br></pre></td></tr></table></figure></p>
+<p>需要注意的是属性变量、一致变量、易变变量不能够直接在声明的时候初始化。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">attribute float attSpan;</span><br><span class="line">uniform float uniLightD;</span><br><span class="line">varying vec3 position;</span><br></pre></td></tr></table></figure>
+<p>运算符方面和C语言一致，但向量和矩阵的运算方面请自行学习线性代数知识学习。</p>
+<h3 id="类型转换、限定符"><a href="#类型转换、限定符" class="headerlink" title="类型转换、限定符"></a>类型转换、限定符</h3><p>OpenGL ES的着色语言没有类型自动提升的功能，即类型匹配必须写清楚，否则会报错。比如</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">float f1 = 1;</span><br></pre></td></tr></table></figure>
+<p>这样的写法是无法编译通过的，整形无法自动提升为浮点数。需要这样写：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">float f1 = 1.0;</span><br><span class="line">bool b = bool(f);// true</span><br><span class="line">float f2 = float(b);// 1.0</span><br></pre></td></tr></table></figure>
+<ul>
+<li>限定符</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>限定符类型</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>attribute</td>
+<td>一般存储每个顶点不同的量（坐标颜色等等）</td>
+</tr>
+<tr>
+<td>uniform</td>
+<td>一般存储于一组顶点组成的空间对象中所有顶点相同的量（光源位置等等）</td>
+</tr>
+<tr>
+<td>varying</td>
+<td>用语顶点着色器传值给片元着色器</td>
+</tr>
+<tr>
+<td>const</td>
+<td>值不可变的常量</td>
+</tr>
+</tbody>
+</table>
+<h3 id="其它"><a href="#其它" class="headerlink" title="其它"></a>其它</h3><p>其它包括流程控制(if、while、for等等)以及方法的命名处理，和C/C++均相同，因此在此不对这部分进行介绍了。</p>
+<h2 id="特殊内建变量"><a href="#特殊内建变量" class="headerlink" title="特殊内建变量"></a>特殊内建变量</h2><p>顶点着色器中的内建变量上一章已介绍过，略去。</p>
+<p>片元着色器的内建变量分为输入与输出两种。</p>
+<ul>
+<li><p>内建输入变量</p>
+<ul>
+<li><p>gl_FragCoord(vec4)</p>
+<p>片元相对于窗口位置的坐标x,y,z,1/w，坐标大小范围也就在窗口的大小范围内。</p>
+</li>
+<li><p>gl_FrontFacing(bool)</p>
+<p>用于判断正在处理的片元是否属于在光栅化阶段生成此片元图元的正面，是则true。</p>
+</li>
+</ul>
+</li>
+<li><p>内建输出变量</p>
+<ul>
+<li><p>gl_FragColor</p>
+<p>代表计算完成后的片元颜色值。</p>
+</li>
+<li><p>gl_FragData</p>
+<p>指明后续固定功能管线使用的片元数据。</p>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="内建函数"><a href="#内建函数" class="headerlink" title="内建函数"></a>内建函数</h2><p>这部分内容几乎可以单独抽一章出来写了，直接看官方文档就好了。</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>本篇主要对着色器语言的大致分点了解，为后续的开发实现作准备，从下章开始会对摄像视点结合部分代码进行说明。</p>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://huangweiwu.info/2016/12/06/OpenGL（二）/" data-id="cix4lr7wu0006laxq4brn2vpw" class="article-share-link">分享到</a><div class="tags"><a href="/tags/OpenGL-Android/">OpenGL Android</a></div><div class="post-nav"><a href="/2016/12/06/OpenGL（一）/" class="pre">OpenGL ES（一）渲染管线与着色器</a><a href="/2016/10/20/Android NDK-JNI原理/" class="next">Android NDK/JNI原理</a></div><div data-thread-key="2016/12/06/OpenGL（二）/" data-title="OpenGL ES（二）着色语言" data-url="http://huangweiwu.info/2016/12/06/OpenGL（二）/" class="ds-share flat"><div class="ds-share-inline"><ul class="ds-share-icons-16"><li data-toggle="ds-share-icons-more"><a href="javascript:void(0);" class="ds-more">分享到：</a></li><li><a href="javascript:void(0);" data-service="weibo" class="ds-weibo">微博</a></li><li><a href="javascript:void(0);" data-service="qzone" class="ds-qzone">QQ空间</a></li><li><a href="javascript:void(0);" data-service="qqt" class="ds-qqt">腾讯微博</a></li><li><a href="javascript:void(0);" data-service="wechat" class="ds-wechat">微信</a></li></ul><div class="ds-share-icons-more"></div></div></div><div data-thread-key="2016/12/06/OpenGL（二）/" data-title="OpenGL ES（二）着色语言" data-url="http://huangweiwu.info/2016/12/06/OpenGL（二）/" data-author-key="1" class="ds-thread"></div></div></div></div><div class="pure-u-1-4"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="http://huangweiwu.info"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/Android-Java/">Android Java</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Android-Java-OpenGL/">Android Java OpenGL</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Hi-man/">Hi,man</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/JNI/" style="font-size: 15px;">JNI</a> <a href="/tags/OpenGL-Android/" style="font-size: 15px;">OpenGL Android</a> <a href="/tags/留言板/" style="font-size: 15px;">留言板</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/12/06/OpenGL（一）/">OpenGL ES（一）渲染管线与着色器</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/12/06/OpenGL（二）/">OpenGL ES（二）着色语言</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/10/20/Android NDK-JNI原理/">Android NDK/JNI原理</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/05/06/hello-world/">Hello World</a></li></ul></div><div class="widget"><div class="comments-title"><i class="fa fa-comment-o"> 最近评论</i></div><div data-num-items="5" data-show-avatars="0" data-show-time="1" data-show-admin="0" data-excerpt-length="32" data-show-title="1" class="ds-recent-comments"></div></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="" title="暂无" target="_blank">暂无</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">卫城.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script>var duoshuoQuery = {short_name:'huangweiwu'};
+(function() {
+    var ds = document.createElement('script');
+    ds.type = 'text/javascript';ds.async = true;
+    ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+    ds.charset = 'UTF-8';
+    (document.getElementsByTagName('head')[0]
+        || document.getElementsByTagName('body')[0]).appendChild(ds);
+})();
+</script><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
